@@ -1,0 +1,108 @@
+/* ============================================================
+   TomodachiDraw - main stylesheet
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: system-ui, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    padding: 2rem;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+h1 { font-size: 2rem; color: #f8b4d9; }
+.subtitle { color: #888; margin-bottom: 2rem; }
+h2 { font-size: 1.2rem; margin-bottom: 1rem; color: #a9c4f5; }
+
+/* Panels */
+.panel {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: opacity 0.2s;
+}
+.panel.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.6rem 1.4rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    margin-top: 0.5rem;
+}
+.btn.primary   { background: #e94560; color: #fff; }
+.btn.secondary { background: #0f3460; color: #e0e0e0; }
+.btn.danger    { background: #7b2d2d; color: #fff; }
+.btn:disabled  { opacity: 0.4; cursor: not-allowed; }
+.btn-row       { display: flex; flex-wrap: wrap; }
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 0.3rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-bottom: 0.8rem;
+}
+.badge-green  { background: #1e4d2b; color: #6fcf97; }
+.badge-red    { background: #4d1e1e; color: #eb5757; }
+.badge-yellow { background: #4d3e1e; color: #f2c94c; }
+.badge-grey   { background: #2a2a2a; color: #888; }
+
+/* Hints and errors */
+.hint  { color: #888; font-size: 0.9rem; margin-bottom: 0.8rem; line-height: 1.5; }
+.error { color: #eb5757; font-size: 0.9rem; margin-top: 0.5rem; }
+.status { color: #a9c4f5; margin-bottom: 0.8rem; }
+
+/* Image preview */
+.preview-container { margin-top: 1rem; }
+.preview-img {
+    max-width: 256px;
+    max-height: 256px;
+    image-rendering: pixelated;
+    border: 2px solid #0f3460;
+    border-radius: 4px;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* D-pad grid layout */
+.dpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    gap: 4px;
+    width: fit-content;
+}
+.ctrl-btn {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.progress-bar {
+    background: #0f3460;
+    border-radius: 8px;
+    height: 16px;
+    overflow: hidden;
+    margin-bottom: 0.6rem;
+}
+.progress-fill {
+    background: linear-gradient(90deg, #e94560, #f8b4d9);
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 8px;
+}

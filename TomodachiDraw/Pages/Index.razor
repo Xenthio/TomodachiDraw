@@ -1,0 +1,409 @@
+@page "/"
+@using TomodachiDraw.Models
+@using TomodachiDraw.Services
+@inject SwitchControllerService Controller
+@inject DrawOrchestrator Orchestrator
+@inject ImageProcessorService Processor
+@inject CanvasNavigatorService Navigator
+@inject IJSRuntime JS
+@implements IDisposable
+
+<h1>🎨 TomodachiDraw</h1>
+<p class="subtitle">PNG → Switch drawing tool</p>
+
+<!-- ================================================================== -->
+<!-- PAIRING PANEL -->
+<!-- ================================================================== -->
+<section class="panel">
+    <h2>Switch Connection</h2>
+
+    <div class="status-badge @PairingCss">@Controller.State.Pairing</div>
+
+    @if (Controller.State.Pairing == PairingState.Disconnected ||
+         Controller.State.Pairing == PairingState.Error)
+    {
+        <p class="hint">
+            On your Switch: System Settings → Controllers → Change Grip/Order<br />
+            (or open "Pair Controllers" from any game's pause menu)
+        </p>
+        <button class="btn primary" @onclick="StartPairing">Start Pairing</button>
+        <button class="btn secondary" @onclick="StartReconnect">Reconnect (no grip menu)</button>
+    }
+    else if (Controller.State.Pairing == PairingState.Searching ||
+             Controller.State.Pairing == PairingState.Pairing)
+    {
+        <p class="hint">Waiting for Switch… make sure it's in pairing mode.</p>
+        <button class="btn danger" @onclick="StopPairing">Cancel</button>
+    }
+    else if (Controller.State.Pairing == PairingState.Connected)
+    {
+        <p class="hint">✓ Connected! Cursor at (@Controller.State.CursorX, @Controller.State.CursorY)</p>
+        <button class="btn secondary" @onclick="PressLR">Press L+R (confirm controller)</button>
+        <button class="btn danger" @onclick="StopPairing">Disconnect</button>
+    }
+
+    @if (Controller.State.ErrorMessage != null)
+    {
+        <p class="error">@Controller.State.ErrorMessage</p>
+    }
+</section>
+
+<!-- ================================================================== -->
+<!-- MANUAL CONTROLS PANEL -->
+<!-- ================================================================== -->
+<section class="panel @(Controller.State.IsConnected ? "" : "disabled")">
+    <h2>Manual Controls</h2>
+    <p class="hint">Or connect a gamepad to your browser — inputs will be forwarded automatically.</p>
+
+    <div class="dpad-grid">
+        <div></div>
+        <button class="btn secondary ctrl-btn"
+            @onmousedown='() => HoldBtn("up")' @onmouseup="ReleaseBtn" @onmouseleave="ReleaseBtn"
+            @ontouchstart='() => HoldBtn("up")' @ontouchend="ReleaseBtn">↑</button>
+        <div></div>
+        <button class="btn secondary ctrl-btn"
+            @onmousedown='() => HoldBtn("left")' @onmouseup="ReleaseBtn" @onmouseleave="ReleaseBtn"
+            @ontouchstart='() => HoldBtn("left")' @ontouchend="ReleaseBtn">←</button>
+        <button class="btn secondary ctrl-btn"
+            @onmousedown='() => HoldBtn("a")' @onmouseup="ReleaseBtn" @onmouseleave="ReleaseBtn"
+            @ontouchstart='() => HoldBtn("a")' @ontouchend="ReleaseBtn">A</button>
+        <button class="btn secondary ctrl-btn"
+            @onmousedown='() => HoldBtn("right")' @onmouseup="ReleaseBtn" @onmouseleave="ReleaseBtn"
+            @ontouchstart='() => HoldBtn("right")' @ontouchend="ReleaseBtn">→</button>
+        <div></div>
+        <button class="btn secondary ctrl-btn"
+            @onmousedown='() => HoldBtn("down")' @onmouseup="ReleaseBtn" @onmouseleave="ReleaseBtn"
+            @ontouchstart='() => HoldBtn("down")' @ontouchend="ReleaseBtn">↓</button>
+        <div></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:0.8rem">
+        @foreach (var (label, btn) in new[]{("B","b"),("X","x"),("Y","y"),("L","l"),("R","r"),("ZL","zl"),("ZR","zr"),("+","plus"),("−","minus")})
+        {
+            var b = btn;
+            <button class="btn secondary ctrl-btn"
+                @onmousedown='() => HoldBtn(b)' @onmouseup="ReleaseBtn" @onmouseleave="ReleaseBtn"
+                @ontouchstart='() => HoldBtn(b)' @ontouchend="ReleaseBtn">@label</button>
+        }
+    </div>
+
+    <p class="hint" style="margin-top:0.6rem">Gamepad: <span class="@(_gamepadConnected ? "badge-green status-badge" : "badge-grey status-badge")">@(_gamepadConnected ? "Connected" : "None")</span></p>
+</section>
+<!-- ================================================================== -->
+<!-- COLOUR TEST PANEL -->
+<details style="margin-bottom:1.5rem">
+<summary style="color:#a9c4f5;cursor:pointer;font-size:1.1rem;padding:0.5rem 0">🔧 Debug / Calibration</summary>
+<section class="panel @(Controller.State.IsConnected ? "" : "disabled")" style="margin-top:0.5rem">
+    <h2>🎨 Colour Test</h2>
+    <p class="hint">Test the colour picker. Adjust calibration values if colour is off.</p>
+
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.8rem">
+        <div style="flex:1;min-width:200px">
+            <label class="hint">Hue: <strong>@_testHue.ToString("F0")°</strong></label>
+            <input type="range" min="0" max="360" step="1" @bind="_testHue" @bind:event="oninput" style="width:100%" />
+            <label class="hint">Saturation: <strong>@_testSat.ToString("F2")</strong></label>
+            <input type="range" min="0" max="1" step="0.01" @bind="_testSat" @bind:event="oninput" style="width:100%" />
+            <label class="hint">Brightness: <strong>@_testBri.ToString("F2")</strong></label>
+            <input type="range" min="0" max="1" step="0.01" @bind="_testBri" @bind:event="oninput" style="width:100%" />
+            <label class="hint">Palette slot: <strong>@_testSlot</strong></label>
+            <input type="range" min="0" max="8" step="1" @bind="_testSlot" @bind:event="oninput" style="width:100%" />
+        </div>
+        <div>
+            <p class="hint">Preview</p>
+            <div style="width:64px;height:64px;border-radius:8px;border:2px solid #0f3460;background:hsl(@(_testHue.ToString("F0")),@((_testSat*100).ToString("F0"))%,@((_testBri*50).ToString("F0"))%)"></div>
+        </div>
+    </div>
+
+    <button class="btn primary" @onclick="TestSetColour">Set Palette Slot @_testSlot</button>
+    <p class="hint" style="margin-top:0.5rem">@_testStatus</p>
+
+    <hr style="border-color:#0f3460;margin:1rem 0" />
+    <h2>Calibration</h2>
+    <p class="hint">Adjust if colours are too light/dark or wrong hue. Changes apply immediately.</p>
+    <label class="hint">Draw speed — step settle (ms): <strong>@_drawStepMs ms</strong> (lower = faster)</label>
+    <input type="range" min="10" max="200" step="5" @bind="_drawStepMs" @bind:event="oninput" style="width:100%" />
+    <label class="hint">Colour rect width (saturation steps): <strong>@_rectWidth</strong></label>
+    <input type="range" min="50" max="300" step="1" @bind="_rectWidth" @bind:event="oninput" style="width:100%" />
+    <label class="hint">Colour rect height (brightness steps): <strong>@_rectHeight</strong></label>
+    <input type="range" min="50" max="200" step="1" @bind="_rectHeight" @bind:event="oninput" style="width:100%" />
+    <label class="hint">Hue slider steps: <strong>@_hueSteps</strong></label>
+    <input type="range" min="50" max="400" step="1" @bind="_hueSteps" @bind:event="oninput" style="width:100%" />
+    <button class="btn secondary" style="margin-top:0.5rem" @onclick="ApplyCalibration">Apply Calibration</button>
+</section>
+</details>
+<!-- ================================================================== -->
+<section class="panel @(Controller.State.IsConnected ? "" : "disabled")">
+    <h2>Import PNG</h2>
+
+    <InputFile OnChange="OnFileSelected" accept=".png,.jpg,.jpeg" />
+
+    @if (_previewDataUrl != null)
+    {
+        <div class="preview-container">
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                <div>
+                    <p class="hint">Original</p>
+                    <img src="@_previewDataUrl" class="preview-img" alt="Original" />
+                </div>
+                @if (_processedPreviewUrl != null)
+                {
+                    <div>
+                        <p class="hint">Processed (256×256, @(_maxColours == 0 ? "all" : _maxColours.ToString()) colours)</p>
+                        <img src="@_processedPreviewUrl" class="preview-img" alt="Processed" />
+                    </div>
+                }
+            </div>
+
+            <div style="margin-top:0.8rem">
+                <label class="hint">Max colours: <strong>@(_maxColours == 0 ? "Unlimited" : _maxColours.ToString())</strong></label><br/>
+                <input type="range" min="0" max="256" step="4" @bind="_maxColours" @bind:event="oninput" style="width:100%" />
+                <span class="hint">0 = use all colours in image &nbsp;|&nbsp; lower = faster draw, less detail</span>
+            </div>
+
+            <button class="btn secondary" style="margin-top:0.5rem" @onclick="ReprocessImage" disabled="@(_imageBytes == null)">Re-analyse</button>
+
+            <p class="hint" style="margin-top:0.5rem">@(_plan?.TotalPixels.ToString("N0") ?? "…") pixels · @(_plan?.Regions.Count ?? 0) regions · ~@(_plan?.EstimatedSteps.ToString("N0") ?? "…") steps</p>
+        </div>
+    }
+</section>
+
+<!-- ================================================================== -->
+<!-- DRAW PANEL -->
+<!-- ================================================================== -->
+<section class="panel @(CanDraw ? "" : "disabled")">
+    <h2>Draw</h2>
+
+    @if (Orchestrator.IsRunning)
+    {
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: @((Orchestrator.Progress * 100).ToString("F1"))%"></div>
+        </div>
+        <p class="status">@Orchestrator.StatusMessage</p>
+
+        <div class="btn-row">
+            @if (Orchestrator.IsPaused)
+            {
+                <button class="btn primary" @onclick="Resume">Resume</button>
+            }
+            else
+            {
+                <button class="btn secondary" @onclick="Pause">Pause</button>
+            }
+            <button class="btn danger" @onclick="Cancel">Cancel</button>
+        </div>
+    }
+    else
+    {
+        <p class="status">@Orchestrator.StatusMessage</p>
+        <button class="btn primary" @onclick="StartDraw" disabled="@(!CanDraw)">
+            ▶ Start Drawing
+        </button>
+    }
+</section>
+
+@code {
+    private string? _previewDataUrl;       // original image preview
+    private string? _processedPreviewUrl;  // quantised 256x256 preview
+    private DrawPlan? _plan;
+    private byte[]? _imageBytes;
+    private int _maxColours = 16;
+
+    protected override void OnInitialized()
+    {
+        Controller.StateChanged    += OnStateChanged;
+        Orchestrator.ProgressChanged += OnProgressChanged;
+    }
+
+    private bool CanDraw => Controller.State.IsConnected && _plan != null && !Orchestrator.IsRunning;
+
+    // ----------------------------------------------------------------
+    // Pairing
+    // ----------------------------------------------------------------
+    private async Task StartPairing()   => await Controller.StartPairingAsync();
+    private async Task StartReconnect()  => await Controller.StartPairingAsync(reconnect: true);
+    private async Task StopPairing()  => await Controller.StopAsync();
+    private async Task PressLR()       => await Controller.PressAsync("l+r", holdMs: 500);
+
+    // ----------------------------------------------------------------
+    // Image import
+    // ----------------------------------------------------------------
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
+        _imageBytes = ms.ToArray();
+
+        // Build preview data URL
+        _previewDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(_imageBytes)}";
+
+        // Process in background — don't block UI
+        await RunProcessImage();
+
+        StateHasChanged();
+    }
+
+    private async Task ReprocessImage()
+    {
+        if (_imageBytes == null) return;
+        await RunProcessImage();
+        StateHasChanged();
+    }
+
+    private async Task RunProcessImage()
+    {
+        if (_imageBytes == null) return;
+        await Task.Run(() =>
+        {
+            _plan = Processor.ProcessImage(_imageBytes, _maxColours, out var preview);
+            _processedPreviewUrl = $"data:image/png;base64,{Convert.ToBase64String(preview)}";
+        });
+    }
+
+    // ----------------------------------------------------------------
+    // Drawing controls
+    // ----------------------------------------------------------------
+    private async Task StartDraw()
+    {
+        if (_plan == null) return;
+        // Fire and forget — orchestrator updates progress events
+        _ = Orchestrator.DrawAsync(_plan);
+    }
+
+    private void Pause()  => Orchestrator.Pause();
+    private void Resume() => Orchestrator.Resume();
+    private void Cancel() => Orchestrator.Cancel();
+
+    // ----------------------------------------------------------------
+    // State updates from services → trigger Blazor re-render
+    // ----------------------------------------------------------------
+    private void OnStateChanged()    => InvokeAsync(StateHasChanged);
+    private void OnProgressChanged() => InvokeAsync(StateHasChanged);
+
+    // ----------------------------------------------------------------
+    // Pairing badge CSS
+    // ----------------------------------------------------------------
+    private string PairingCss => Controller.State.Pairing switch
+    {
+        PairingState.Connected   => "badge-green",
+        PairingState.Error       => "badge-red",
+        PairingState.Searching or
+        PairingState.Pairing     => "badge-yellow",
+        _                        => "badge-grey"
+    };
+
+    private bool _gamepadConnected;
+    private float _testHue = 180f;
+    private float _testSat = 1.0f;
+    private float _testBri = 1.0f;
+    private int _testSlot = 0;
+    private string _testStatus = "";
+    private int _drawStepMs = 50;
+    private int _rectWidth = 212;
+    private int _rectHeight = 111;
+    private int _hueSteps = 200;
+
+    private async Task TestSetColour()
+    {
+        _testStatus = $"Setting slot {_testSlot}...";
+        StateHasChanged();
+        var colour = new DrawColour(_testHue, _testSat, _testBri);
+        await Navigator.SetPaletteSlotColourAsync(_testSlot, colour);
+        _testStatus = $"Done! H:{_testHue:F0} S:{_testSat:F2} B:{_testBri:F2} → slot {_testSlot}";
+        StateHasChanged();
+    }
+
+    private void ApplyCalibration()
+    {
+        CanvasNavigatorService.DrawStepSettleMs  = _drawStepMs;
+        CanvasNavigatorService.ColourRectWidth   = _rectWidth;
+        CanvasNavigatorService.ColourRectHeight  = _rectHeight;
+        CanvasNavigatorService.HueSliderSteps    = _hueSteps;
+        _testStatus = $"Applied: draw {_drawStepMs}ms, rect {_rectWidth}x{_rectHeight}, hue {_hueSteps} steps";
+        StateHasChanged();
+    }
+
+    private async Task HoldBtn(string button)   => await Controller.PressAsync(button, holdMs: 120);
+    private async Task ReleaseBtn()              { /* release handled by timed press */ }
+    private async Task SendBtn(string button)    => await Controller.PressAsync(button);
+
+    // ----------------------------------------------------------------
+    // Gamepad polling
+    // ----------------------------------------------------------------
+    private CancellationTokenSource? _gamepadCts;
+    private readonly bool[] _prevButtons = new bool[20];
+    // Avoid Dictionary(T,T) in razor — Razor parser treats angle brackets as HTML tags
+    // Also avoid switch expressions — the closing brace+semicolon confuses the Razor block parser
+    private static string? GetGamepadBtn(int idx)
+    {
+        if (idx == 0) return "b";
+        if (idx == 1) return "a";
+        if (idx == 2) return "y";
+        if (idx == 3) return "x";
+        if (idx == 4) return "l";
+        if (idx == 5) return "r";
+        if (idx == 6) return "zl";
+        if (idx == 7) return "zr";
+        if (idx == 8) return "minus";
+        if (idx == 9) return "plus";
+        if (idx == 12) return "up";
+        if (idx == 13) return "down";
+        if (idx == 14) return "left";
+        if (idx == 15) return "right";
+        return null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _gamepadCts = new CancellationTokenSource();
+        _ = PollGamepadAsync(_gamepadCts.Token);
+    }
+
+    private async Task PollGamepadAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                // GetGamepadState via JS — use InvokeAsync with string type to avoid Razor angle bracket issues
+                string rawJson = await JS.InvokeAsync<string>("getGamepadStateJson", ct);
+                if (string.IsNullOrEmpty(rawJson))
+                {
+                    _gamepadConnected = false;
+                    if (_gamepadConnected) await InvokeAsync(StateHasChanged);
+                    continue;
+                }
+                var raw = System.Text.Json.JsonDocument.Parse(rawJson).RootElement;
+                bool wasConnected = _gamepadConnected;
+                _gamepadConnected = true;
+                if (wasConnected != _gamepadConnected) await InvokeAsync(StateHasChanged);
+
+                if (Controller.State.IsConnected)
+                {
+                    var btns = raw.GetProperty("buttons");
+                    int len = Math.Min(btns.GetArrayLength(), _prevButtons.Length);
+                    for (int i = 0; i < len; i++)
+                    {
+                        bool pressed = btns[i].GetBoolean();
+                        var btn = GetGamepadBtn(i);
+                        if (pressed && !_prevButtons[i] && btn != null)
+                            _ = Controller.PressAsync(btn);
+                        _prevButtons[i] = pressed;
+                    }
+                }
+            }
+            catch (JSDisconnectedException) { break; }
+            catch (OperationCanceledException) { break; }
+            catch { }
+            await Task.Delay(50, ct);
+        }
+    }
+
+    public void Dispose()
+    {
+        _gamepadCts?.Cancel();
+        Controller.StateChanged      -= OnStateChanged;
+        Orchestrator.ProgressChanged -= OnProgressChanged;
+    }
+}
