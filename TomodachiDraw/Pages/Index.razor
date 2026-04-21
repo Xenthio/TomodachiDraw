@@ -162,7 +162,7 @@
 
             <button class="btn secondary" style="margin-top:0.5rem" @onclick="ReprocessImage" disabled="@(_imageBytes == null)">Re-analyse</button>
 
-            <p class="hint" style="margin-top:0.5rem">@(_plan?.TotalPixels.ToString("N0") ?? "…") pixels · @(_plan?.Regions.Count ?? 0) regions · ~@(_plan?.EstimatedSteps.ToString("N0") ?? "…") steps</p>
+            <p class="hint" style="margin-top:0.5rem">@(_commands?.Count.ToString("N0") ?? "…") commands</p>
         </div>
     }
 </section>
@@ -204,7 +204,7 @@
 @code {
     private string? _previewDataUrl;       // original image preview
     private string? _processedPreviewUrl;  // quantised 256x256 preview
-    private DrawPlan? _plan;
+    private List<DrawCommand>? _commands;
     private byte[]? _imageBytes;
     private int _maxColours = 16;
 
@@ -214,7 +214,7 @@
         Orchestrator.ProgressChanged += OnProgressChanged;
     }
 
-    private bool CanDraw => Controller.State.IsConnected && _plan != null && !Orchestrator.IsRunning;
+    private bool CanDraw => Controller.State.IsConnected && _commands != null && !Orchestrator.IsRunning;
 
     // ----------------------------------------------------------------
     // Pairing
@@ -255,7 +255,7 @@
         if (_imageBytes == null) return;
         await Task.Run(() =>
         {
-            _plan = Processor.ProcessImage(_imageBytes, _maxColours, out var preview);
+            _commands = Processor.ProcessImage(_imageBytes, _maxColours, out var preview);
             _processedPreviewUrl = $"data:image/png;base64,{Convert.ToBase64String(preview)}";
         });
     }
@@ -265,9 +265,9 @@
     // ----------------------------------------------------------------
     private async Task StartDraw()
     {
-        if (_plan == null) return;
+        if (_commands == null) return;
         // Fire and forget — orchestrator updates progress events
-        _ = Orchestrator.DrawAsync(_plan);
+        _ = Orchestrator.ExecuteAsync(_commands);
     }
 
     private void Pause()  => Orchestrator.Pause();
