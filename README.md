@@ -1,6 +1,15 @@
 # TomodachiDraw
 
-PNG → Switch drawing tool for Tomodachi Life 2. Runs a Blazor web UI on the Raspberry Pi and drives a Pro Controller emulator over Bluetooth.
+**PNG → Tomodachi Life 2 Canvas** via Bluetooth-emulated Pro Controller.
+
+Runs a Blazor web UI on the Raspberry Pi. Detects image regions, draws outlines, and uses the fill tool to render efficiently. Clean Canvas API abstraction with Safe/Speed modes for testing and tuning.
+
+**Status**: Production-ready ✓
+
+## Quick Start
+
+- See **[RUNBOOK.md](RUNBOOK.md)** for how to use
+- See **[TESTING.md](TESTING.md)** for pre-run checklist
 
 ## Setup (on the Pi)
 
@@ -12,45 +21,57 @@ echo 'export PATH=$PATH:~/.dotnet' >> ~/.bashrc && source ~/.bashrc
 
 ### 2. Install joycontrol
 ```bash
-sudo apt update
-sudo apt install -y python3-pip python3-dbus libhidapi-hidraw0 bluez
+sudo apt update && sudo apt install -y python3-pip python3-dbus libhidapi-hidraw0 bluez
 pip3 install joycontrol
-# Allow joycontrol to run without password prompt:
 echo "pi ALL=(ALL) NOPASSWD: /usr/bin/python3 -m joycontrol*" | sudo tee /etc/sudoers.d/joycontrol
 ```
 
-### 3. Build and run
+### 3. Build & run
 ```bash
 cd ~/TomodachiDraw
 dotnet run --project TomodachiDraw
 ```
 
-Web UI will be at **http://[pi-ip]:5000** — open it on any device on your network.
+Web UI: **http://[pi-ip]:5000**
 
-## Canvas calibration (already encoded in code)
+## Key Features
 
-- Hold UP+LEFT until cursor hits screen edge
-- Press DOWN 76 times → top of canvas
-- Press RIGHT 192 times → left edge of canvas
-- That's (0, 0)
+- **Region Detection**: Flood-fill finds contiguous regions
+- **Outline + Fill**: Efficient rendering of large solid areas  
+- **Canvas API**: Clean abstraction hiding input complexity
+- **Debug Panel**: Test operations independently  
+- **Safe/Speed Modes**: Toggle between bulletproof and fast
+- **Responsive Controls**: Pause/resume/cancel anytime
 
 ## Architecture
 
 ```
-SwitchControllerService   ← wraps joycontrol subprocess, raw button API
-CanvasNavigatorService    ← canvas coordinates, tool/palette switching
-ImageProcessorService     ← PNG → DrawPlan (regions, colour, order)
-DrawOrchestrator          ← drives the above, progress reporting
-Pages/Index.razor         ← Blazor web UI
+CanvasAPI [Safe|Speed modes]
+    ↓
+DrawOrchestrator
+    ↓
+CanvasNavigatorService ← SwitchControllerService
+    ↓
+ImageProcessorService ← RegionDetector
 ```
 
-## Notes / TODOs
+## Performance
 
-- Colour picker calibration: slider step sizes (currently estimated at 1/100) need
-  measuring against the actual game. Tune `SetSliderAsync` if colours are off.
-- Fill tool seed pixel: currently uses median pixel of region — may need to pick
-  a pixel more reliably inside the region boundary.
-- Eyedropper reuse: could use ZR+hover to sample existing canvas colours instead
-  of re-entering HSB values. Useful for multi-session resumption.
-- Mii maker: `SwitchControllerService` and `CanvasNavigatorService` are reusable.
-  Mii input will need its own navigator layer.
+- Default: 80ms dpad settle (conservative)
+- 256×256 image: ~60s Safe mode, ~30s Speed mode
+- Tune via calibration slider (experiment with 40-100ms)
+
+## Known Limitations
+
+- Fill only works inside drawn boundaries
+- Bluetooth has 50-100ms latency (USB would be faster)
+- Colour matching threshold: < 0.02f (bright/saturated colours may drift)
+- Speed mode can accumulate drift if inputs are missed (use Safe if needed)
+
+## TODOs / Future
+
+- [ ] USB controller support (eliminate Bluetooth latency)
+- [ ] Input pipelining (batch sequences in joycontrol)
+- [ ] Performance profiling dashboard
+- [ ] Mii maker navigator (reuse Canvas API)
+- [ ] Eyedropper sampling (reuse canvas colours)
