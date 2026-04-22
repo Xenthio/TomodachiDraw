@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TomodachiDraw Debug</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { color: #f8b4d9; }
+        .section {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .section h3 { color: #a9c4f5; margin-top: 0; }
+        button {
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        button:hover { background: #218838; }
+        .result {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 1rem;
+            color: #333;
+            font-size: 0.9rem;
+            min-height: 20px;
+        }
+        .state {
+            background: #e9ecef;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            color: #333;
+        }
+        a { color: #a9c4f5; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>🐛 Canvas API Debug</h1>
+    <p>Test individual operations. <a href="/">← Back to Draw</a></p>
+
+    <div class="section">
+        <h3>Mode</h3>
+        <p id="modeDisplay">Current: Loading...</p>
+        <button onclick="call('SetSafeMode')">Safe Mode</button>
+        <button onclick="call('SetSpeedMode')">Speed Mode</button>
+    </div>
+
+    <div class="section">
+        <h3>Tools</h3>
+        <button onclick="call('SetToolPencil')">Pencil</button>
+        <button onclick="call('SetToolFill')">Fill</button>
+        <button onclick="call('SetToolEraser')">Eraser</button>
+    </div>
+
+    <div class="section">
+        <h3>Palette</h3>
+        <button onclick="call('Slot0')">Slot 0</button>
+        <button onclick="call('Slot1')">Slot 1</button>
+        <button onclick="call('Slot0Red')">Slot 0 → Red</button>
+        <button onclick="call('Slot0Black')">Slot 0 → Black</button>
+    </div>
+
+    <div class="section">
+        <h3>Navigation</h3>
+        <button onclick="call('Centre')">Centre (128,128)</button>
+        <button onclick="call('Origin')">Origin (0,0)</button>
+        <button onclick="call('Corner')">Corner (255,255)</button>
+    </div>
+
+    <div class="section">
+        <h3>Drawing</h3>
+        <button onclick="call('Pixel')">Draw Pixel</button>
+        <button onclick="call('Fill')">Fill</button>
+    </div>
+
+    <div class="section">
+        <h3>State</h3>
+        <button onclick="call('Realign')">Realign (Home)</button>
+        <div id="stateDisplay" class="state">State: Loading...</div>
+    </div>
+
+    <div class="result">Result: <span id="result">Ready</span></div>
+
+    <script>
+        async function call(action) {
+            try {
+                const response = await fetch('/api/debug', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action })
+                });
+                const data = await response.json();
+                document.getElementById('result').textContent = data.result || 'OK';
+                document.getElementById('modeDisplay').textContent = `Current: ${data.mode || '?'}`;
+                document.getElementById('stateDisplay').textContent = data.state || 'State: ?';
+            } catch (err) {
+                document.getElementById('result').textContent = `Error: ${err.message}`;
+            }
+        }
+
+        // Load initial state
+        call('GetState');
+    </script>
+</body>
+</html>

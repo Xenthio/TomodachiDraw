@@ -127,7 +127,7 @@ public class DrawOrchestrator(
                 break;
 
             case Wait wait:
-                await Task.Delay(wait.Ms);
+                await Task.Delay(wait.Ms, ct);
                 break;
 
             default:
