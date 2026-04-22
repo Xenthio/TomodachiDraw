@@ -11,6 +11,8 @@ builder.Services.AddSingleton<SwitchControllerService>();
 builder.Services.AddSingleton<CanvasNavigatorService>();
 builder.Services.AddSingleton<ImageProcessorService>();
 builder.Services.AddSingleton<DrawOrchestrator>();
+builder.Services.AddSingleton<CanvasAPI>();
+builder.Services.AddSingleton<DebugController>();
 
 // Listen on all interfaces so you can reach from PC browser
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
