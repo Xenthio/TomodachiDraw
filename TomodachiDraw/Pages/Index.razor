@@ -168,6 +168,51 @@
 </section>
 
 <!-- ================================================================== -->
+<!-- CANVAS API DEBUG -->
+<!-- ================================================================== -->
+<details style="margin-bottom:1.5rem">
+<summary style="color:#a9c4f5;cursor:pointer;font-size:1.1rem;padding:0.5rem 0">🧪 Canvas API Testing</summary>
+<section class="panel @(Controller.State.IsConnected ? "" : "disabled")" style="margin-top:0.5rem">
+    <h2>Canvas API Debug</h2>
+    <p class="hint">Test individual Canvas API operations. Changes apply immediately.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div>
+            <h3 style="color:#a9c4f5;font-size:0.95rem;margin:0 0 0.5rem 0">Mode</h3>
+            <p class="hint">Current: <strong>@_canvasMode</strong></p>
+            <button class="btn" style="background:#007bff" @onclick="SetCanvasSafeMode">Safe</button>
+            <button class="btn" style="background:#007bff" @onclick="SetCanvasSpeedMode">Speed</button>
+        </div>
+        <div>
+            <h3 style="color:#a9c4f5;font-size:0.95rem;margin:0 0 0.5rem 0">Tools</h3>
+            <button class="btn" style="background:#28a745;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestToolPencil">Pencil</button>
+            <button class="btn" style="background:#28a745;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestToolFill">Fill</button>
+            <button class="btn" style="background:#28a745;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestToolEraser">Eraser</button>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div>
+            <h3 style="color:#a9c4f5;font-size:0.95rem;margin:0 0 0.5rem 0">Navigation</h3>
+            <button class="btn" style="background:#17a2b8;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestNavCentre">Centre</button>
+            <button class="btn" style="background:#17a2b8;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestNavOrigin">Origin</button>
+            <button class="btn" style="background:#17a2b8;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestNavCorner">Corner</button>
+        </div>
+        <div>
+            <h3 style="color:#a9c4f5;font-size:0.95rem;margin:0 0 0.5rem 0">Drawing</h3>
+            <button class="btn" style="background:#dc3545;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestDrawPixel">Pixel</button>
+            <button class="btn" style="background:#dc3545;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestFill">Fill</button>
+            <button class="btn" style="background:#6c757d;font-size:0.8rem;padding:0.4rem 0.6rem" @onclick="TestRealign">Realign</button>
+        </div>
+    </div>
+
+    <div style="background:#e9ecef;padding:0.5rem;border-radius:4px;color:#333;font-size:0.9rem;word-break:break-word">
+        <strong>Result:</strong> @_canvasTestResult
+    </div>
+</section>
+</details>
+
+<!-- ================================================================== -->
 <!-- DRAW PANEL -->
 <!-- ================================================================== -->
 <section class="panel @(CanDraw ? "" : "disabled")">
@@ -406,4 +451,22 @@
         Controller.StateChanged      -= OnStateChanged;
         Orchestrator.ProgressChanged -= OnProgressChanged;
     }
+
+    // ================================================================
+    // Canvas API Debug
+    // ================================================================
+    private string _canvasMode = "Speed";
+    private string _canvasTestResult = "Ready";
+
+    private void SetCanvasSafeMode() { _canvasMode = "Safe"; _canvasTestResult = "Safe mode"; StateHasChanged(); }
+    private void SetCanvasSpeedMode() { _canvasMode = "Speed"; _canvasTestResult = "Speed mode"; StateHasChanged(); }
+    private async Task TestToolPencil() { try { await Navigator.SelectToolAsync(CanvasNavigatorService.Tool.Pencil); _canvasTestResult = "✓ Pencil"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestToolFill() { try { await Navigator.SelectToolAsync(CanvasNavigatorService.Tool.Fill); _canvasTestResult = "✓ Fill"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestToolEraser() { try { await Navigator.SelectToolAsync(CanvasNavigatorService.Tool.Eraser); _canvasTestResult = "✓ Eraser"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestNavCentre() { try { await Navigator.MoveToAsync(128, 128); _canvasTestResult = "✓ Centre"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestNavOrigin() { try { await Navigator.HomeCursorAsync(); _canvasTestResult = "✓ Origin"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestNavCorner() { try { await Navigator.MoveToAsync(255, 255); _canvasTestResult = "✓ Corner"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestDrawPixel() { try { await Navigator.DrawPixelAsync(); _canvasTestResult = "✓ Pixel drawn"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestFill() { try { await Navigator.FillAsync(); _canvasTestResult = "✓ Filled"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
+    private async Task TestRealign() { try { await Navigator.EnsureCanvasFocusAsync(); await Navigator.HomeCursorAsync(); _canvasTestResult = "✓ Realigned"; } catch (Exception ex) { _canvasTestResult = $"✗ {ex.Message}"; } StateHasChanged(); }
 }
