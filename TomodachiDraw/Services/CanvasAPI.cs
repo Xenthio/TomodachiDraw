@@ -95,10 +95,11 @@ public class CanvasAPI
         }
     }
 
-    /// <summary>Navigate to a canvas position. Safe: full home first. Speed: relative delta.</summary>
+    /// <summary>Navigate to a canvas position. Safe: full home first. Speed: relative delta (auto-init if needed).</summary>
     public async Task NavigateToAsync(int x, int y)
     {
-        if (CurrentMode == Mode.Safe)
+        // Auto-initialize if cursor was never homed (Speed mode + first navigation)
+        if (_navigator.CursorX < 0 || CurrentMode == Mode.Safe)
         {
             await _navigator.EnsureCanvasFocusAsync();
             await _navigator.HomeCursorAsync();

@@ -33,6 +33,7 @@
             font-size: 0.9rem;
         }
         button:hover { background: #218838; }
+        button:disabled { background: #666; cursor: not-allowed; }
         .result {
             background: #fff3cd;
             border: 1px solid #ffc107;
@@ -40,19 +41,21 @@
             padding: 0.5rem;
             margin-top: 1rem;
             color: #333;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             min-height: 20px;
+            word-break: break-word;
         }
         .state {
             background: #e9ecef;
             padding: 0.5rem;
             border-radius: 4px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             margin-top: 0.5rem;
             color: #333;
         }
         a { color: #a9c4f5; text-decoration: none; }
         a:hover { text-decoration: underline; }
+        .mode { font-weight: bold; color: #f8b4d9; }
     </style>
 </head>
 <body>
@@ -61,7 +64,7 @@
 
     <div class="section">
         <h3>Mode</h3>
-        <p id="modeDisplay">Current: Loading...</p>
+        <p>Current: <span class="mode" id="modeDisplay">?</span></p>
         <button onclick="call('SetSafeMode')">Safe Mode</button>
         <button onclick="call('SetSpeedMode')">Speed Mode</button>
     </div>
@@ -100,22 +103,41 @@
         <div id="stateDisplay" class="state">State: Loading...</div>
     </div>
 
-    <div class="result">Result: <span id="result">Ready</span></div>
+    <div class="result">
+        <strong>Result:</strong><br/>
+        <span id="result">Ready</span>
+    </div>
 
     <script>
+        let busy = false;
+
         async function call(action) {
+            if (busy) return;
+            busy = true;
+            
             try {
+                document.getElementById('result').textContent = `Calling ${action}...`;
+                
                 const response = await fetch('/api/debug', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action })
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
                 const data = await response.json();
-                document.getElementById('result').textContent = data.result || 'OK';
-                document.getElementById('modeDisplay').textContent = `Current: ${data.mode || '?'}`;
-                document.getElementById('stateDisplay').textContent = data.state || 'State: ?';
+                
+                document.getElementById('result').textContent = data.result || '(no result)';
+                document.getElementById('modeDisplay').textContent = data.mode || '?';
+                document.getElementById('stateDisplay').textContent = data.state || 'State: (no data)';
+                
             } catch (err) {
-                document.getElementById('result').textContent = `Error: ${err.message}`;
+                document.getElementById('result').textContent = `❌ Error: ${err.message}`;
+            } finally {
+                busy = false;
             }
         }
 
