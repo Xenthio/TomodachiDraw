@@ -13,8 +13,39 @@ body {
     margin: 0 auto;
 }
 
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.header-links {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.debug-link {
+    color: #888;
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #0f3460;
+    border-radius: 4px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.debug-link:hover {
+    color: #a9c4f5;
+    border-color: #a9c4f5;
+    background: rgba(15, 52, 96, 0.3);
+}
+
 h1 { font-size: 2rem; color: #f8b4d9; }
-.subtitle { color: #888; margin-bottom: 2rem; }
+.subtitle { color: #888; margin-bottom: 0; }
 h2 { font-size: 1.2rem; margin-bottom: 1rem; color: #a9c4f5; }
 
 /* Panels */
