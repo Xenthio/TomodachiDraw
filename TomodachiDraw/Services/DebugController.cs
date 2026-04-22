@@ -96,7 +96,7 @@ public class DebugController(CanvasAPI api)
     {
         try
         {
-            await api.SetPaletteColourAsync(0, new DrawColour { Hue = 0, Saturation = 1, Brightness = 1 });
+            await api.SetPaletteColourAsync(0, new DrawColour(0, 1, 1));
             LastResult = "✓ Palette slot 0 set to Red";
         }
         catch (Exception ex) { LastResult = $"✗ Error: {ex.Message}"; }
@@ -106,7 +106,7 @@ public class DebugController(CanvasAPI api)
     {
         try
         {
-            await api.SetPaletteColourAsync(0, new DrawColour { Hue = 0, Saturation = 0, Brightness = 0 });
+            await api.SetPaletteColourAsync(0, new DrawColour(0, 0, 0));
             LastResult = "✓ Palette slot 0 set to Black";
         }
         catch (Exception ex) { LastResult = $"✗ Error: {ex.Message}"; }

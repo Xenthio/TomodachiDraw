@@ -1,13 +1,10 @@
 @page "/"
-@using System.Collections.Generic
 @using TomodachiDraw.Models
 @using TomodachiDraw.Services
 @inject SwitchControllerService Controller
 @inject DrawOrchestrator Orchestrator
 @inject ImageProcessorService Processor
 @inject CanvasNavigatorService Navigator
-@inject CanvasAPI API
-@inject DebugController Debug
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -202,58 +199,6 @@
             ▶ Start Drawing
         </button>
     }
-</section>
-
-<!-- ================================================================== -->
-<!-- DEBUG PANEL -->
-<!-- ================================================================== -->
-<section class="panel">
-    <h2>🐛 Debug</h2>
-
-    <div class="status-badge @(Debug.IsSafeMode ? "safe" : "speed")" style="margin-bottom: 1rem;">
-        @Debug.ModeDisplay
-    </div>
-    <button class="btn secondary" @onclick="ToggleDebugMode" style="margin-bottom: 1rem;">
-        Toggle Safe/Speed Mode
-    </button>
-
-    <p class="hint">@Debug.GetStateInfo()</p>
-    <p class="status">@Debug.LastResult</p>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Tool</h3>
-    <div class="btn-row">
-        <button class="btn secondary" @onclick="DebugSetToolPencil">Pencil</button>
-        <button class="btn secondary" @onclick="DebugSetToolFill">Fill</button>
-        <button class="btn secondary" @onclick="DebugSetToolEraser">Eraser</button>
-    </div>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Palette</h3>
-    <div class="btn-row">
-        <button class="btn secondary" @onclick="DebugSetSlot0">Slot 0</button>
-        <button class="btn secondary" @onclick="DebugSetSlot1">Slot 1</button>
-    </div>
-    <div class="btn-row">
-        <button class="btn secondary" @onclick="DebugSetSlot0Red">Set 0 → Red</button>
-        <button class="btn secondary" @onclick="DebugSetSlot0Black">Set 0 → Black</button>
-    </div>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Canvas</h3>
-    <div class="btn-row">
-        <button class="btn secondary" @onclick="DebugNavCentre">Nav Centre</button>
-        <button class="btn secondary" @onclick="DebugNavOrigin">Nav Origin</button>
-        <button class="btn secondary" @onclick="DebugNavCorner">Nav Corner</button>
-    </div>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Draw</h3>
-    <div class="btn-row">
-        <button class="btn primary" @onclick="DebugDrawPixel">Draw Pixel</button>
-        <button class="btn primary" @onclick="DebugFill">Fill</button>
-    </div>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">State</h3>
-    <div class="btn-row">
-        <button class="btn secondary" @onclick="DebugRealign">Realign (Home to 128,128)</button>
-    </div>
 </section>
 
 @code {
@@ -454,22 +399,6 @@
             await Task.Delay(50, ct);
         }
     }
-
-    // Debug Panel Event Handlers
-    private void ToggleDebugMode() => Debug.ToggleMode();
-    private async Task DebugSetToolPencil() => await Debug.SetToolPencilAsync();
-    private async Task DebugSetToolFill() => await Debug.SetToolFillAsync();
-    private async Task DebugSetToolEraser() => await Debug.SetToolEraserAsync();
-    private async Task DebugSetSlot0() => await Debug.ActivatePaletteSlot0Async();
-    private async Task DebugSetSlot1() => await Debug.ActivatePaletteSlot1Async();
-    private async Task DebugSetSlot0Red() => await Debug.SetPaletteSlot0RedAsync();
-    private async Task DebugSetSlot0Black() => await Debug.SetPaletteSlot0BlackAsync();
-    private async Task DebugNavCentre() => await Debug.NavigateToCentreAsync();
-    private async Task DebugNavOrigin() => await Debug.NavigateToOriginAsync();
-    private async Task DebugNavCorner() => await Debug.NavigateToCornerAsync();
-    private async Task DebugDrawPixel() => await Debug.DrawPixelAsync();
-    private async Task DebugFill() => await Debug.FillAsync();
-    private async Task DebugRealign() => await Debug.RealignAsync();
 
     public void Dispose()
     {

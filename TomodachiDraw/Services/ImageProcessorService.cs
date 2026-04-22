@@ -133,9 +133,9 @@ public class ImageProcessorService
 file class DrawColourComparer : IEqualityComparer<DrawColour>
 {
     public static readonly DrawColourComparer Instance = new();
-    public bool Equals(DrawColour? a, DrawColour? b) =>
+    bool IEqualityComparer<DrawColour>.Equals(DrawColour? a, DrawColour? b) =>
         a != null && b != null && a.DistanceTo(b) < 0.02f;
-    public int GetHashCode(DrawColour c) =>
+    int IEqualityComparer<DrawColour>.GetHashCode(DrawColour c) =>
         HashCode.Combine(
             MathF.Round(c.Hue / 10) * 10,
             MathF.Round(c.Saturation * 10) / 10,
